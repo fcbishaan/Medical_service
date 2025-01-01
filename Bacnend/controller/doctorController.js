@@ -1,5 +1,7 @@
 import doctorModel from "../models/doctorModel.js";
 import nodemailer from 'nodemailer';
+import dotenv from "dotenv";
+dotenv.config();
 
 const requestToJoin = async (req, res) => {
     const { name, email, license } = req.body;
@@ -11,7 +13,9 @@ const requestToJoin = async (req, res) => {
             name,
             email,
             license,
-            status: "pending"
+            status: "pending",
+            isProfileComplete: false, 
+            completionRequested: false,
         });
 
        
@@ -21,8 +25,8 @@ const requestToJoin = async (req, res) => {
             host: 'smtp.ethereal.email',
             port: 587,
             auth: {
-                user: 'colin.kilback@ethereal.email',
-                pass: 'SMDPXdfJHTPH1m5eSF'
+                user: process.env.EMAIL,
+                pass: process.env.EMAIL_PASSWORD
             }
         });
            // Email Details
