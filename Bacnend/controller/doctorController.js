@@ -1,5 +1,5 @@
-import doctorModel from "../models/doctorModel.js"
-
+import doctorModel from "../models/doctorModel.js";
+import nodemailer from 'nodemailer';
 
 const requestToJoin = async (req, res) => {
     const { name, email, license } = req.body;
@@ -16,38 +16,73 @@ const requestToJoin = async (req, res) => {
 
        
         await newRequest.save({ validateBeforeSave: false });
-        res.json({ success: true, message: "Request submitted successfully." });
+
+        const transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            auth: {
+                user: 'colin.kilback@ethereal.email',
+                pass: 'SMDPXdfJHTPH1m5eSF'
+            }
+        });
+           // Email Details
+           const mailOptions = {
+            from: `"Medical Service Admin" <${process.env.EMAIL}>`,
+            to: email,
+            subject: "Profile Completion Request",
+            html: `
+                <h3>Dear ${name},</h3>
+                <p>Your request to join our medical service system has been approved.</p>
+                <p>Please complete your profile to start using our platform.</p>
+                <p><a href="http://yourdomain.com/complete-profile/${newRequest._id}">Complete Your Profile</a></p>
+                <p>Thank you for joining us!</p>
+            `,
+        };
+
+        // Send Email
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "Request submitted and email sent successfully." });
     } catch (error) {
         console.error(error);
-        res.json({ success: false, message: "Error submitting request." });
+        res.json({ success: false, message: "Error submitting request or sending email." });
     }
 };
 
 
 
-const completeProlfe = async (req, res) => {
-    const{doctorId, speciality, degree, experience, about, fees, address, slots} = req.body;
-    if(!doctorId || !speciality || !degree || !experience || !about || !fees || !address || !slots){
-        return res.json({ success: false, message: "Missing Details" });
-    }
+const completeDoctorProfile = async (req, res) => {
     try {
-        const doctor = await doctorModel.findById(doctorId);
-        if(!doctor || doctor.status !== 'approved'){
-            return res.json({success: false, message: "Doctor not approved or does not exist"})
+        const doctorId = req.user.id; // Assume auth middleware adds user ID to req.user
+        const { speciality, degree, experience, about, fees, address, slots } = req.body;
+
+        const updatedDoctor = await doctorModel.findByIdAndUpdate(
+            doctorId,
+            {
+                speciality,
+                degree,
+                experience,
+                about,
+                fees,
+                address,
+                slots,
+                isProfileComplete: true, // Mark profile as complete
+                completionRequested: false, // Clear the request flag
+            },
+            { new: true }
+        );
+
+        if (!updatedDoctor) {
+            return res.status(404).json({ success: false, message: "Doctor not found." });
         }
-        doctor.speciality = speciality;
-        doctor.degree = degree;
-        doctor.experience = experience;
-        doctor.about = about;
-        doctor.fees = fees;
-        doctor.address = JSON.parse(address);
-        doctor.slots = JSON.parse(slots);
-        doctor.status = "prfoleCompleted";
-        await doctor.save();
-        res.json({ success: true, message: "Profile completed successfully." });
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile completed successfully.",
+            data: updatedDoctor,
+        });
     } catch (error) {
         console.error(error);
-        res.json({ success: false, message: "Error completing profile." });
+        res.status(500).json({ success: false, message: "Error completing profile." });
     }
-}
-export { requestToJoin, completeProlfe}
+};
+export { requestToJoin, completeDoctorProfile};

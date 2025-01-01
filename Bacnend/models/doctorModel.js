@@ -15,7 +15,10 @@ const doctorSchema = new mongoose.Schema({
   fees: { type: Number, required: true },
   address: { type: Object, required: true },
   date: { type: Number, required: true },
-  slots: { type: Object, default: {} }
+  slots: { type: Object, default: {} },
+  isProfileComplete: { type: Boolean, default: false },
+  completionRequested: { type: Boolean, default: false }, // Tracks if admin has requested profile completion
+
 }, { minimize: false });
 
 const doctorModel =  mongoose.model('doctor', doctorSchema );

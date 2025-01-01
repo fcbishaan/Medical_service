@@ -17,19 +17,52 @@ const getPendingRequests = async(req, res) => {
 const reviewDoctorRequest = async (req, res) => {
     try {
         const { doctorId, action } = req.body;
-        const update = action === "approve" ? { status: "approved" } : { status: "rejected" };
 
-        const updatedDoctor = await doctorModel.findByIdAndUpdate(doctorId, update, { new: true });
-        if (!updatedDoctor) {
-            return res.status(404).json({ success: false, message: "Doctor not found." });
+        if (action === "approve") {
+            // Approve and ask to complete the profile
+            const updatedDoctor = await doctorModel.findByIdAndUpdate(
+                doctorId,
+                { status: "approved", completionRequested: true },
+                { new: true }
+            );
+
+            if (!updatedDoctor) {
+                return res.status(404).json({ success: false, message: "Doctor not found." });
+            }
+
+            // Notify the doctor (example: log a message, send an email, or push notification)
+            console.log(`Doctor ${updatedDoctor.name} has been approved. Please complete your profile.`);
+
+            return res.status(200).json({
+                success: true,
+                message: "Doctor approved. Request to complete profile sent.",
+                data: updatedDoctor,
+            });
+        } else if (action === "reject") {
+            const updatedDoctor = await doctorModel.findByIdAndUpdate(
+                doctorId,
+                { status: "rejected" },
+                { new: true }
+            );
+
+            if (!updatedDoctor) {
+                return res.status(404).json({ success: false, message: "Doctor not found." });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Doctor rejected.",
+                data: updatedDoctor,
+            });
+        } else {
+            return res.status(400).json({ success: false, message: "Invalid action." });
         }
-
-        res.status(200).json({ success: true, message: "Doctor status updated.", data: updatedDoctor });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Error reviewing request." });
     }
 };
+
 
 
 //API for Adding Doctor
@@ -99,6 +132,7 @@ const loginAdmin = async (req, res) => {
         res.json({success:false, message:error.message})
     }
 }
+
 
 
 export {loginAdmin, getPendingRequests, reviewDoctorRequest}
