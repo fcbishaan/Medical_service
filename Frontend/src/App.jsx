@@ -14,7 +14,7 @@ const isAdminLoggedIn = !!localStorage.getItem('adminToken');
 
   return (
     <div>
-      <Navbar />
+      <Navbar isAdmin={isAdminLoggedIn}/>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/doctors" element={<Doctor />} />
