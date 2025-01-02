@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
-
+import axios from "axios";
+import { useNavigate } from 'react-router-dom';
 const Login = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Email:', email);
-    console.log('Password:', password);
+   try {
+    const response = await axios.post("/api/admin/login", { email, password });
+    if (response.data.success) {
+      localStorage.setItem("adminToken", response.data.token); 
+      alert("Login successful!");
+      navigate("/admin-dashboard");
+    } else {
+      setError(response.data.message);
+    }
+   } catch (error) {
+    console.error("Error during admin login:", err);
+    setError("An error occurred. Please try again.");
+   }
   };
 
   return (
