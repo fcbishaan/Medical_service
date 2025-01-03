@@ -1,7 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { adminLogout } from '../utils/logout';
 
 const Navbar = ({ isAdmin }) => {
+
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    adminLogout();
+    navigate('/login');
+  }
   if (isAdmin) {
     // Admin Navigation Bar
     return (
@@ -50,12 +57,13 @@ const Navbar = ({ isAdmin }) => {
               </Link>
             </li>
             <li>
-              <Link
-                to="/logout"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Logout
-              </Link>
+            <button
+             onClick={handleLogout}
+              className="block w-full text-left hover:bg-gray-700 p-2 rounded transition"
+    >
+            Logout
+           </button>
+
             </li>
           </ul>
         </div>

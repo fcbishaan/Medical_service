@@ -1,32 +1,41 @@
 import React, { useState } from 'react';
-import axios from "axios";
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(''); // State to store error messages
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-   try {
-    const response = await axios.post("/api/admin/login", { email, password });
-    if (response.data.success) {
-      localStorage.setItem("adminToken", response.data.token); 
-      alert("Login successful!");
-      navigate("/admin-dashboard");
-    } else {
-      setError(response.data.message);
+
+    try {
+      const response = await axios.post('/api/admin/login', { email, password });
+
+      if (response.data.success) {
+        localStorage.setItem('adminToken', response.data.token); // Store the token
+        alert('Login successful!');
+        navigate('/admin-dashboard'); // Navigate to the Admin Dashboard
+      } else {
+        setError(response.data.message || 'Invalid login credentials');
+      }
+    } catch (error) {
+      console.error('Error during admin login:', error);
+      setError('An error occurred. Please try again.');
     }
-   } catch (error) {
-    console.error("Error during admin login:", err);
-    setError("An error occurred. Please try again.");
-   }
   };
 
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center"> Login</h2>
+        {error && (
+          <div className="text-red-500 text-center mb-4">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="email">
