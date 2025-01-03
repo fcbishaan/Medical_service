@@ -49,7 +49,7 @@ const PendingRequests = () => {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>Specialty</th>
+              <th>License/Certificate</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -58,7 +58,7 @@ const PendingRequests = () => {
               <tr key={request._id}>
                 <td>{request.name}</td>
                 <td>{request.email}</td>
-                <td>{request.speciality || 'N/A'}</td>
+                <td>{request.license || 'N/A'}</td>
                 <td>
                   <button onClick={() => handleAction(request._id, 'approve')}>Approve</button>
                   <button onClick={() => handleAction(request._id, 'reject')}>Reject</button>
