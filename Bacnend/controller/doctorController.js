@@ -2,6 +2,7 @@ import doctorModel from "../models/doctorModel.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();
+import {v2 as cloudinary} from 'cloudinary'
 
 // Create transport for nodemailer
 const requestToJoin = async (req, res) => {
