@@ -1,75 +1,72 @@
 import doctorModel from "../models/doctorModel.js";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();
-import {v2 as cloudinary} from 'cloudinary'
+import { v2 as cloudinary } from "cloudinary";
+import validator from "validator";
 
-// Create transport for nodemailer
 const requestToJoin = async (req, res) => {
-    const { name, email, license } = req.body;
+    const { name, email } = req.body;
+    const file = req.file; // Multer attaches this to the request
 
-    if (!name || !email || !license) {
+    // Validate inputs
+    if (!name || !email || !file) {
+        console.error("Request Body:", req.body);
+        console.error("Uploaded File:", req.file);
         return res.status(400).json({ success: false, message: "Missing required details." });
     }
 
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ success: false, message: "Please enter a valid email." });
+    }
+
     try {
+        // Upload file to Cloudinary
+        const cloudinaryResponse = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: "licenses" },
+                (error, result) => {
+                    if (error) {
+                        console.error("Cloudinary upload failed:", error.message);
+                        reject(new Error("Cloudinary upload failed."));
+                    } else {
+                        console.log("Cloudinary upload success:", result);
+                        resolve(result);
+                    }
+                }
+            );
+            uploadStream.end(file.buffer);
+        });
+
+        const licenseUrl = cloudinaryResponse.secure_url;
+
+        // Save doctor details in the database
         const newRequest = new doctorModel({
             name,
             email,
-            license,
+            license: licenseUrl,
             status: "pending",
             isProfileComplete: false,
             completionRequested: false,
         });
 
-        await newRequest.save({ validateBeforeSave: false });
+        await newRequest.save();
 
-        // Send email notification (use try-catch to prevent unhandled errors)
-        try {
-            const transporter = nodemailer.createTransport({
-                host: "smtp.gmail.com",
-                port: 465,
-                secure: true,
-                auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                },
-            });
-
-            await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: email,
-                subject: "Doctor Joining Request Received",
-                text: `Dear ${name},\n\nYour request to join has been received. We will review it and get back to you soon.\n\nRegards,\nAdmin Team`,
-            });
-        } catch (emailError) {
-            console.error("Email error:", emailError.message);
-            return res.status(500).json({
-                success: false,
-                message: "Request saved but failed to send email notification.",
-            });
-        }
-
-        // If everything succeeds
         return res.status(200).json({ success: true, message: "Request submitted successfully." });
     } catch (error) {
-        console.error("Error saving doctor request:", error);
+        console.error("Error in requestToJoin:", error.message);
         return res.status(500).json({ success: false, message: "Error submitting request." });
     }
 };
-
 
 const completeDoctorProfile = async (req, res) => {
     try {
         const doctorId = req.user.id; // Assume auth middleware adds user ID to req.user
         const { speciality, degree, experience, about, fees, address, slots } = req.body;
 
-        // Validate input
         if (!speciality || !degree || !experience || !fees || !address || !slots) {
             return res.status(400).json({ success: false, message: "Missing required profile fields." });
         }
 
-        // Update doctor profile
         const updatedDoctor = await doctorModel.findByIdAndUpdate(
             doctorId,
             {

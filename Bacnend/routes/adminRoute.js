@@ -1,7 +1,7 @@
 import express from 'express'
 import {  loginAdmin } from '../controller/adminController.js'
 import { getPendingRequests,reviewDoctorRequest } from '../controller/adminController.js'
-import upload from '../middleware/multer.js'
+//import upload from '../middleware/multer.js'
 import authAdmin from '../middleware/authAdmin.js'
 
 const adminRouter = express.Router();

@@ -1,10 +1,8 @@
+// File: middleware/multer.js
 import multer from "multer";
-const storage = multer.diskStorage({
-    __filename: function(req, file, callback){
-        callback(null,file.originalname)
-    }
-})
 
-const uplaod = multer({storage})
+// Configure Multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-export default uplaod
+export default upload;
