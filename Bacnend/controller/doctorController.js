@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 dotenv.config();
 import { v2 as cloudinary } from "cloudinary";
 import validator from "validator";
+import nodemailer from "nodemailer";
+
 
 const requestToJoin = async (req, res) => {
     const { name, email } = req.body;

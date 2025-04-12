@@ -23,7 +23,7 @@ const registerUser = async (req, res) => {
             dob,
             phone
         });
-
+        
         await newUser.save();
 
         // Generate a token

@@ -31,7 +31,7 @@ const App = () => {
 
   return (
     <div>
-      {/* Pass isAdmin prop to Navbar */}
+      
       <Navbar />
 
       <Routes>
