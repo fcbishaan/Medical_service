@@ -1,124 +1,133 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Users, CalendarCheck, Activity, UserCheck, AlertCircle } from "lucide-react";
 
 const AdminDashboard = () => {
-  const [requests, setRequests] = useState([]);
+  const [stats, setStats] = useState(null); // Initialize as null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchPendingRequests();
+    fetchStats();
   }, []);
 
-  const fetchPendingRequests = async () => {
+  const fetchStats = async () => {
+    setLoading(true);
+    setError(null);
+    setStats(null); // Reset stats on fetch
     try {
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.get("/api/admin/getPendingRequests", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // --- Replace with your actual API call ---
+      // const response = await fetch('/api/admin/stats');
+      // if (!response.ok) throw new Error('Failed to fetch stats');
+      // const data = await response.json();
+      // setStats(data);
 
-      if (response.data.success) {
-        setRequests(response.data.data);
-      } else {
-        setError(response.data.message || "Failed to fetch pending requests.");
-      }
+      // --- Mock Data ---
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setStats({
+        totalUsers: 150,
+        pendingRequests: 7,
+        totalAppointments: 210,
+        approvedDoctors: 38,
+      });
+      // --- End Mock Data ---
+
     } catch (err) {
-      setError(err.message || "An error occurred while fetching pending requests.");
+      console.error("Error fetching stats:", err);
+      setError(err.message || "Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAction = async (doctorId, action) => {
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.post(
-        "/api/admin/reviewDoctorRequest",
-        { doctorId, action },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        alert(response.data.message);
-        fetchPendingRequests(); // Refresh the list after an action
-      } else {
-        alert(response.data.message || "Failed to perform action.");
-      }
-    } catch (err) {
-      alert(err.message || "An error occurred while performing the action.");
-    }
-  };
-
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-800 text-white">
-        <div className="p-4 text-center text-lg font-semibold border-b border-gray-700">
-          Admin Dashboard
-        </div>
-        <nav className="mt-4">
-          <ul>
-            <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Pending Requests</li>
-            <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Doctor Management</li>
-            <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">System Activities</li>
-            <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">Settings</li>
-          </ul>
-        </nav>
-      </aside>
+    <div className="p-8">
+      <h2 className="text-3xl font-bold tracking-tight mb-6">Admin Dashboard</h2>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h1 className="text-2xl font-bold mb-4">Pending Doctor Requests</h1>
-          {loading ? (
-            <p>Loading pending requests...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : requests.length === 0 ? (
-            <p className="text-gray-500">No pending requests available.</p>
-          ) : (
-            <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className="py-3 px-6 text-left">Name</th>
-                  <th className="py-3 px-6 text-left">Email</th>
-                  <th className="py-3 px-6 text-left">License/Certificate</th>
-                  <th className="py-3 px-6 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((request) => (
-                  <tr key={request._id} className="border-t border-gray-200">
-                    <td className="py-3 px-6">{request.name}</td>
-                    <td className="py-3 px-6">{request.email}</td>
-                    <td className="py-3 px-6">{request.license || "N/A"}</td>
-                    <td className="py-3 px-6 text-center space-x-2">
-                      <button
-                        className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-                        onClick={() => handleAction(request._id, "approve")}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-                        onClick={() => handleAction(request._id, "reject")}
-                      >
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      {/* Loading State with Skeletons */}
+      {loading && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, index) => (
+            <Card key={index}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-[120px]" /> {/* Skeleton for title */}
+                <Skeleton className="h-4 w-4" /> {/* Skeleton for icon */}
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-[60px] mb-1" /> {/* Skeleton for number */}
+                <Skeleton className="h-3 w-[100px]" /> {/* Skeleton for description */}
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </main>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Content Display */}
+      {!loading && !error && stats && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Stat Cards */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              {/* <p className="text-xs text-muted-foreground">+20% from last month</p> */}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Doctor Requests</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingRequests}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Approved Doctors</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.approvedDoctors}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalAppointments}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Placeholder for no data state if needed */}
+      {/* {!loading && !error && !stats && (
+        <Alert>
+          <AlertTitle>No Data</AlertTitle>
+          <AlertDescription>Could not load dashboard statistics.</AlertDescription>
+        </Alert>
+      )} */}
+
     </div>
   );
 };

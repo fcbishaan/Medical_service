@@ -1,117 +1,85 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { adminLogout } from '../utils/logout';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
-const Navbar = ({ isAdmin }) => {
-
+// Receive userType prop
+const MainNavbar = ({ isLoggedIn, userType, onLogout }) => {
   const navigate = useNavigate();
-  const handleLogout = () => {
-    adminLogout();
-    navigate('/login');
-  }
-  if (isAdmin) {
-    // Admin Navigation Bar
-    return (
-      <nav className="bg-gray-800 text-white w-64 h-full fixed">
-        <div className="p-4">
-          <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-          <ul className="space-y-4">
-            <li>
-              <Link
-                to="/admin-dashboard"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/admin/review"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Review Section
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/admin/doctor-requests"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Doctor Requests
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/admin/doctor-list"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Doctor List
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/myprofile"
-                className="block hover:bg-gray-700 p-2 rounded transition"
-              >
-                Profile
-              </Link>
-            </li>
-            <li>
-            <button
-             onClick={handleLogout}
-              className="block w-full text-left hover:bg-gray-700 p-2 rounded transition"
-    >
-            Logout
-           </button>
 
-            </li>
-          </ul>
-        </div>
-      </nav>
-    );
-  }
-
-  // Default User Navigation Bar
   return (
-    <nav className="bg-blue-500 p-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-white text-2xl font-bold">
-          MediNearBy
-        </Link>
-        <ul className="hidden md:flex space-x-6">
-          <li>
-            <Link to="/" className="text-white hover:text-gray-200 transition">
-              Home
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            {/* Logo */}
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <span className="text-xl font-bold text-primary">MediNearBy</span>
             </Link>
-          </li>
-          <li>
-            <Link to="/doctors" className="text-white hover:text-gray-200 transition">
-              All Doctors
-            </Link>
-          </li>
-          <li>
-            <Link to="/about" className="text-white hover:text-gray-200 transition">
-              About Us
-            </Link>
-          </li>
-        </ul>
-        <div className="hidden md:flex space-x-4">
-          <Link
-            to="/login"
-            className="bg-white text-blue-500 px-4 py-2 rounded hover:bg-gray-100 transition"
-          >
-            Login
-          </Link>
-          <Link
-            to="/register"
-            className="bg-white text-blue-500 px-4 py-2 rounded hover:bg-gray-100 transition"
-          >
-            Register
-          </Link>
+
+            {/* Main Navigation (Show for logged-out or patients/doctors) */}
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link
+                to="/doctors" // Public list of doctors
+                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-primary"
+              >
+                Find Doctors
+              </Link>
+              <Link
+                to="/about"
+                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-primary"
+              >
+                About Us
+              </Link>
+              <Link
+                to="/contact"
+                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 hover:text-primary"
+              >
+                Contact
+              </Link>
+            </div>
+          </div>
+
+          {/* Auth Buttons & User Specific Links */}
+          <div className="flex items-center space-x-4">
+            {isLoggedIn ? (
+              <>
+                {/* Patient Specific */}
+                {userType === 'patient' && (
+                  <Button variant="ghost" onClick={() => navigate('/my-appointments')}>
+                    My Appointments
+                  </Button>
+                )}
+                {/* Doctor Specific */}
+                {userType === 'doctor' && (
+                  <Button variant="ghost" onClick={() => navigate('/doctor/dashboard')}>
+                    Doctor Dashboard
+                  </Button>
+                )}
+
+                {/* Common for logged in users */}
+                <Button variant="ghost" onClick={() => navigate('/profile')}>
+                  Profile
+                </Button>
+                <Button variant="outline" onClick={onLogout}>
+                  Logout
+                </Button>
+              </>
+            ) : (
+              // Logged out users
+              <>
+                <Button variant="ghost" onClick={() => navigate('/login')}>
+                  Login
+                </Button>
+                <Button variant="default" onClick={() => navigate('/register')}>
+                  Register
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
   );
 };
 
-export default Navbar;
+export default MainNavbar;
