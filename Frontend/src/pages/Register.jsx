@@ -8,8 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea"; // Added for address
-import { AlertCircle, CheckCircle } from "lucide-react";
-
+import { AlertCircle, CheckCircle, Upload, X } from "lucide-react";
 const Register = () => {
   const navigate = useNavigate();
   const [userType, setUserType] = useState('patient');
@@ -30,12 +29,33 @@ const Register = () => {
   const [doctorLname, setDoctorLname] = useState('');
   const [doctorEmail, setDoctorEmail] = useState('');
   const [doctorLicenseFile, setDoctorLicenseFile] = useState(null); // For the file object
-
+  const [previewUrl, setPreviewUrl] = useState('');
   // --- Common State ---
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
+
+  const handlePatientImage = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      // Store the actual file for submission
+      setPatientImage(file);
+    } else {
+      setPreviewUrl('');
+      setPatientImage('');
+    }
+  };
+
+  const removePatientImage = () => {
+    setPreviewUrl('');
+    setPatientImage('');
+    const input = document.getElementById('image-upload');
+    if (input) input.value = '';
+  };
   // --- Patient Submit Handler ---
   const handlePatientSubmit = async (e) => {
     e.preventDefault();
@@ -53,7 +73,7 @@ const Register = () => {
       name: patientName,
       email: patientEmail,
       password: patientPassword,
-      image: patientImage, // Sending URL string
+      image: patientImage, 
       address: patientAddress,
       gender: patientGender,
       dob: patientDob,
@@ -180,8 +200,50 @@ const Register = () => {
                        </SelectContent>
                    </Select>
                 </div>
-                <div className="space-y-2"> <Label htmlFor="p-image">Profile Image URL (Optional)</Label> <Input id="p-image" placeholder="https://..." value={patientImage} onChange={(e) => setPatientImage(e.target.value)} disabled={loading || !!successMessage} /> </div>
-                <div className="space-y-2 md:col-span-2"> <Label htmlFor="p-address">Address (Optional)</Label> <Textarea id="p-address" value={patientAddress} onChange={(e) => setPatientAddress(e.target.value)} disabled={loading || !!successMessage} /> </div>
+                <div className="space-y-2">
+            <Label>Profile Picture</Label>
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              {previewUrl ? (
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="Profile preview"
+                    className="max-h-48 rounded-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={removePatientImage}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  <Label
+                    htmlFor="image-upload"
+                    className="mt-2 cursor-pointer text-blue-600 hover:text-blue-500"
+                  >
+                    <span>Upload a photo</span>
+                    <Input
+                      id="image-upload"
+                      name="image"
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={handlePatientImage}
+                    />
+                  </Label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
+                <div className="space-y-2 md:col-span-2"> <Label htmlFor="p-address">Address </Label> <Textarea id="p-address" value={patientAddress} onChange={(e) => setPatientAddress(e.target.value)} disabled={loading || !!successMessage} /> </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading || !!successMessage}> {loading ? 'Registering...' : 'Register as Patient'} </Button>
             </form>
@@ -198,7 +260,7 @@ const Register = () => {
                  <div className="space-y-2 md:col-span-2"> <Label htmlFor="d-email">Email Address</Label> <Input id="d-email" type="email" value={doctorEmail} onChange={(e) => setDoctorEmail(e.target.value)} required disabled={loading || !!successMessage} /> </div>
                  <div className="space-y-2 md:col-span-2"> 
                      <Label htmlFor="d-licenseFile">Medical License (PDF/Image)</Label> 
-                     <Input id="d-licenseFile" name="licenseFile" type="file" onChange={handleFileChange} required accept=".pdf,.jpg,.jpeg,.png" disabled={loading || !!successMessage} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                     <Input id="d-licenseFile" name="file" type="file" onChange={handleFileChange} required accept=".pdf,.jpg,.jpeg,.png" disabled={loading || !!successMessage} className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
                      {doctorLicenseFile && <p className="text-xs text-muted-foreground mt-1">Selected: {doctorLicenseFile.name}</p>}
                  </div>
                </div>

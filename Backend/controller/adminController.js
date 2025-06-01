@@ -7,6 +7,7 @@ import { json } from 'express'
 import nodemailer from 'nodemailer';
 import DoctorRequest from '../models/DoctorRequest.js'
 import dotenv from 'dotenv';
+import Review from '../models/Review.js'
 dotenv.config();
 
 const getPendingRequests = async(req, res) => {
@@ -19,6 +20,25 @@ const getPendingRequests = async(req, res) => {
     }
 };
 
+const getAllDoctors = async (req, res) => {
+    try {
+        const doctors = await doctorModel.find()
+            .select('-password')
+            .sort({ createdAt: -1 }); // Sort by newest first
+
+        res.status(200).json({
+            success: true,
+            count: doctors.length,
+            data: doctors
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 const reviewDoctorRequest = async (req, res) => {
     try {
         const { doctorId, action } = req.body;
@@ -26,35 +46,32 @@ const reviewDoctorRequest = async (req, res) => {
         if (!doctorId || !action) {
             return res.status(400).json({ success: false, message: "Missing doctorId or action." });
         }
-
-        // Retrieve the join request from DoctorRequest collection
         const doctorRequest = await DoctorRequest.findById(doctorId);
         if (!doctorRequest) {
             return res.status(404).json({ success: false, message: "Doctor request not found." });
         }
 
         if (action === "approve") {
-            // Generate random password (only on approval)
-            const password = Math.random().toString(36).slice(-8).trim();
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Create a new Doctor document with data from the request
             const newDoctor = new doctorModel({
                 Fname: doctorRequest.Fname,
                 Lname: doctorRequest.Lname,
                 email: doctorRequest.email,
                 license: doctorRequest.license,
-                password: hashedPassword,
+                password: "",
                 status: "approved",
                 isProfileComplete: false,
             });
 
-            await newDoctor.save();
-
-            // Remove the join request (or mark it as processed)
+            await newDoctor.save(); 
             await doctorRequest.deleteOne();
 
-            // Configure Nodemailer to send email with credentials
+           const token = jwt.sign(
+            { doctorId:newDoctor._id},
+            process.env.JWT_SECRET,
+            {expiresIn: "1h"}
+        )
+
+        const link = `${process.env.CLIENT_URL}/create-password?token=${token}&email=${newDoctor.email}`;
             const transporter = nodemailer.createTransport({
                 service: "gmail",
                 auth: {
@@ -66,8 +83,15 @@ const reviewDoctorRequest = async (req, res) => {
             await transporter.sendMail({
                 from: process.env.EMAIL,
                 to: newDoctor.email,
-                subject: "Doctor Account Approved",
-                text: `Dear Dr. ${newDoctor.Fname} ${newDoctor.Lname},\n\nYour request to join our platform has been approved!\n\nYou can now log in using the following credentials:\nEmail: ${newDoctor.email}\nPassword: ${password}\n\nPlease log in and change your password after your first login.\n\nBest regards,\nMedical Service Team`,
+                subject: "Your Doctor Account Has Been Approved",
+                html: `
+            <p>Dear Dr. ${newDoctor.Fname} ${newDoctor.Lname},</p>
+            <p>Your request to join our medical platform has been approved.</p>
+            <p>Please set your password by clicking the link below:</p>
+            <p><a href="${link}">Set Your Password</a></p>
+            <p>This link will expire in 1 hour for security.</p>
+            <p>Regards,<br/>Medical Service Team</p>
+            `,
             });
 
             return res.status(200).json({ success: true, message: "Doctor approved and email sent.", data: newDoctor });
@@ -118,8 +142,201 @@ const reviewDoctorRequest = async (req, res) => {
     }
 };
 
+const getPendingReviews = async(req, res) => {
+    try {
+        const reviews = await Review.find({ status:'pending' })
+        .populate('patient doctor appoinment')
+        .sort({createdAt: -1});
 
+        res.status(200).json({
+            success: true,
+            count: reviews.length,
+            data: reviews
+        });
 
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+// Update review status endpoint
+const updateReviewStatus = async (req, res) => {
+    try {
+      const review = await Review.findByIdAndUpdate(
+        req.params.id,
+        { status: req.body.status },
+        { new: true }
+      ).populate('patient', 'name')
+       .populate('doctor', 'name');
+  
+      if (!review) {
+        return res.status(404).json({ success: false, message: 'Review not found' });
+      }
+  
+      res.json({ 
+        success: true, 
+        message: 'Review status updated',
+        data: review
+      });
+      
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+  };
+// Get dashboard statistics
+const getDashboardStats = async (req, res) => {
+    try {
+        // Import models inside the function to avoid circular dependencies
+        const userModel = (await import('../models/userModel.js')).default;
+        const doctorModel = (await import('../models/doctorModel.js')).default;
+        const DoctorRequest = (await import('../models/DoctorRequest.js')).default;
+        const Review = (await import('../models/Review.js')).default;
+        const Appoinment = (await import('../models/AppoinmentSchema.js')).default;
 
+        // Get counts in parallel for better performance
+        const [
+            totalUsers,
+            pendingRequests,
+            approvedDoctors,
+            pendingReviews,
+            totalAppointments
+        ] = await Promise.all([
+            userModel.countDocuments(),
+            DoctorRequest.countDocuments({ status: 'pending' }),
+            doctorModel.countDocuments({ status: 'approved' }),
+            Review.countDocuments({ status: 'pending' }),
+            Appoinment.countDocuments()
+        ]);
 
-export { getPendingRequests, reviewDoctorRequest}
+        res.status(200).json({
+            success: true,
+            data: {
+                totalUsers,
+                pendingRequests,
+                approvedDoctors,
+                pendingReviews,
+                totalAppointments
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch dashboard statistics',
+            error: error.message
+        });
+    }
+};
+
+// Get doctor categories statistics
+const getDoctorCategoriesStats = async (req, res) => {
+    try {
+        const doctorModel = (await import('../models/doctorModel.js')).default;
+        
+        // Get all approved doctors
+        const doctors = await doctorModel.find({ status: 'approved' });
+        
+        // Count doctors by speciality
+        const categories = {};
+        const validSpecialties = [
+            "Cardiologist",
+            "Dermatologist",
+            "General Physician",
+            "Neurologist",
+            "Orthopedic",
+            "Pediatrician",
+            "ENT Specialist",
+            "Psychiatrist",
+            "Gynecologist",
+            "Urologist",
+            "Physiotherapist"
+        ];
+        
+        // Initialize all categories with 0 count
+        validSpecialties.forEach(specialty => {
+            categories[specialty] = 0;
+        });
+        
+        // Count doctors in each category
+        doctors.forEach(doctor => {
+            if (doctor.speciality && Array.isArray(doctor.speciality)) {
+                doctor.speciality.forEach(specialty => {
+                    if (categories.hasOwnProperty(specialty)) {
+                        categories[specialty]++;
+                    }
+                });
+            }
+        });
+        
+        // Convert to array format for the chart
+        const data = Object.entries(categories).map(([name, value]) => ({
+            name,
+            value,
+            fill: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color for each category
+        }));
+        
+        res.status(200).json({
+            success: true,
+            data
+        });
+    } catch (error) {
+        console.error('Error fetching doctor categories:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch doctor categories',
+            error: error.message
+        });
+    }
+};
+
+// Delete a doctor
+const deleteDoctor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find and delete the doctor
+    const doctor = await doctorModel.findByIdAndDelete(id);
+    
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found'
+      });
+    }
+    
+    // Here you might want to add additional cleanup:
+    // - Delete related appointments
+    // - Notify the doctor via email
+    // - Clean up any related data
+    
+    res.status(200).json({
+      success: true,
+      message: 'Doctor deleted successfully',
+      data: { doctorId: id }
+    });
+    
+  } catch (error) {
+    console.error('Error deleting doctor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete doctor',
+      error: error.message
+    });
+  }
+};
+
+export { 
+    getPendingRequests, 
+    getAllDoctors, 
+    reviewDoctorRequest,
+    getPendingReviews, 
+    updateReviewStatus,
+    getDashboardStats,
+    getDoctorCategoriesStats,
+    deleteDoctor
+}

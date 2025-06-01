@@ -1,12 +1,14 @@
-// File: middleware/multer.js
-import multer from "multer";
+    // Backend/middleware/multer.js
+    import multer from 'multer';
 
-// Configure Multer for memory storage
-const upload = multer({ storage:multer.memoryStorage(),
-    limits:{
-        fileSize: 10*1024*1024,
-    },
 
-}).single('license');
+    const storage = multer.memoryStorage();
 
-export default upload;
+   
+    const upload = multer({ 
+        storage: storage,
+        limits: { fileSize: 5 * 1024 * 1024 } // Example: Limit file size to 5MB
+    });
+
+   
+    export default upload; 

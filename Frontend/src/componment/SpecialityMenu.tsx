@@ -1,17 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// List of services and their Flaticon URLs
 const services = [
-  { id: 1, name: "General Practitioner", icon: "https://img.icons8.com/ios/452/stethoscope.png" },
-  { id: 2, name: "Ophthalmologist", icon: "https://cdn-icons-png.flaticon.com/512/7023/7023258.png" },
-  { id: 3, name: "Dentist", icon: "https://cdn-icons-png.flaticon.com/512/6401/6401317.png" },
-  { id: 4, name: "Trichologist", icon: "https://cdn-icons-png.flaticon.com/512/14431/14431790.png" },
-  { id: 5, name: "Psychologist", icon: "https://cdn-icons-png.flaticon.com/512/17977/17977338.png" },
-  { id: 6, name: "Dermatology", icon: "https://cdn-icons-png.flaticon.com/512/10605/10605737.png" },
-  { id: 7, name: "Physiotherapist", icon: "https://cdn-icons-png.flaticon.com/512/6172/6172724.png" },
-  { id: 8, name: "General Check-Up", icon: "https://cdn-icons-png.flaticon.com/512/15536/15536390.png" },
+  // ... keep your existing services array ...
 ];
 
 interface SpecialityMenuProps {
@@ -19,32 +11,45 @@ interface SpecialityMenuProps {
 }
 
 const SpecialityMenu: React.FC<SpecialityMenuProps> = ({ onSpecialitySelect }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      onSpecialitySelect(searchQuery.trim());
+    }
+  };
+
   return (
     <section className="py-10 bg-muted">
       <div className="container mx-auto px-4">
-        {/* Heading */}
         <h2 className="text-center text-3xl font-bold text-foreground mb-8">
           Find Doctors and Services Nearby
         </h2>
         
-        {/* Search Box */}
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-10">
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center justify-center gap-4 mb-10">
           <Input
             type="text"
-            placeholder="Service, practice or practitioner"
+            placeholder="Specialty or doctor name"
             className="w-full md:w-1/2"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Input
             type="text"
-            placeholder="Suburb or postcode"
+            placeholder="Location or postcode"
             className="w-full md:w-1/3"
+            value={locationQuery}
+            onChange={(e) => setLocationQuery(e.target.value)}
           />
-          <Button className="w-full md:w-auto">
+          <Button type="submit" className="w-full md:w-auto">
             Search
           </Button>
-        </div>
+        </form>
 
-        {/* Services Grid */}
+        {/* Popular Services Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
           {services.map((service) => (
             <div

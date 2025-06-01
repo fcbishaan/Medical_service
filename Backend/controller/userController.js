@@ -51,21 +51,100 @@ const userLogin = async (req, res) => {
 
         // Generate a token
         const token = jwt.sign(
-            { userId: user._id, role: 'patient' }, // Add role
-            process.env.JWT_SECRET, 
-            { expiresIn: '1h' } 
+            { id: user._id, role: 'patient' },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
         );
+
+        // Format the response to match what frontend expects
         const userResponse = {
             _id: user._id,
-            role: 'patient', // Explicitly set role
+            role: 'patient',
             name: user.name,
-            email: user.email
-            // Add other necessary fields like image, address etc. if needed by frontend on login
+            email: user.email,
+            isProfileComplete: !!user.phone // Consider profile complete if phone exists
         };
-        res.status(200).json({ message: "Login successful", token,userResponse });
+
+        res.status(200).json({ 
+            message: "Login successful", 
+            token,
+            userResponse
+        });
     } catch (error) {
+        console.error("Login error:", error);
         res.status(500).json({ message: "Something went wrong" });
     }
 };
 
-export {registerUser, userLogin}
+const getPatientProfile = async (req, res) => {
+    try {
+      console.log("Request user object:", req.user); // Debug log
+      
+      // Use req.user.id instead of req.user.userId
+      const patient = await userModel.findById(req.user.id).select('-password -__v');
+      
+      if (!patient) {
+        console.log(`No patient found with ID: ${req.user.id}`);
+        return res.status(404).json({
+          success: false,
+          message: "Patient profile not found"
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        data: {
+          ...patient._doc,
+          role: 'patient'
+        }
+      });
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error"
+      });
+    }
+  };
+
+// Update patient profile
+const editPatientProfile = async (req, res) => {
+  try {
+    const { name, phone, address, dob } = req.body;
+    const userId = req.user.id; // From auth middleware
+
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      {
+        name,
+        phone,
+        address,
+        dob: dob ? new Date(dob) : undefined
+      },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating profile',
+      error: error.message
+    });
+  }
+};
+
+export {registerUser, userLogin, getPatientProfile, editPatientProfile}

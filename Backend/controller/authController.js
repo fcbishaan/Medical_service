@@ -99,7 +99,52 @@ export const userOrDoctorLoginCombined = async (req, res) => {
         res.status(500).json({ success: false, message: "An error occurred during login." });
     }
 };
-
-// --- Keep Registration functions here ---
-// export const registerUser = async (req, res) => { /* ... */ }; // From userController
-// export const requestToJoin = async (req, res) => { /* ... */ }; // From doctorController
+// Get profile for any authenticated user (admin, patient, doctor)
+export const getProfile = async (req, res) => {
+    const { userId, userType } = req.user; // From JWT
+    
+    try {
+        let profile;
+        
+        switch(userType) {
+            case 'admin':
+                profile = {
+                    _id: userId,
+                    role: 'admin',
+                    name: 'Administrator',
+                    email: process.env.ADMIN_EMAIL
+                };
+                break;
+                
+            case 'patient':
+                profile = await userModel.findById(userId).select('-password');
+                if (!profile) throw new Error('Patient profile not found');
+                profile = profile.toObject();
+                profile.role = 'patient';
+                break;
+                
+            case 'doctor':
+                profile = await doctorModel.findById(userId).select('-password');
+                if (!profile) throw new Error('Doctor profile not found');
+                profile = profile.toObject();
+                profile.role = 'doctor';
+                profile.fullName = profile.Fname ? `${profile.Fname} ${profile.Lname}`.trim() : profile.name;
+                break;
+                
+            default:
+                throw new Error('Unknown user role');
+        }
+        
+        res.status(200).json({ 
+            success: true, 
+            data: profile 
+        });
+        
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Failed to fetch profile' 
+        });
+    }
+};

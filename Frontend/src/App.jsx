@@ -1,177 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'; // Import Navigate
-
-// ... other imports ...
+import React from 'react';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import MainNavbar from './componment/Navbar';
 import AdminSidebar from './components/app-sidebar';
 import Login from './pages/Login';
-import Register from './pages/Register'; // You'll modify this significantly
+import Register from './pages/Register';
 import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
- // Example
 import Profile from './pages/Profile';
-
-// Admin Pages
 import AdminDashboard from './Admin/AdminDashboard';
 import AdminReview from './Admin/AdminReview';
 import DoctorRequests from './Admin/PendingRequest';
 import DoctorList from './Admin/DoctorList';
-
-// Doctor Pages (Example)
-import DoctorDashboard from './pages/DoctorDashboard'; 
+import DoctorDashboard from './pages/DoctorDashboard';
 import DoctorAppointments from './pages/DoctorAppointments';
-
-// Patient Pages (Example)
-import PatientDashboard from './pages/PatientDashboard'; // Or just use '/' or '/profile'
+import PatientDashboard from './pages/PatientDashboard';
 import MyAppoinment from './pages/MyAppoinment';
+import Doctor from './Doctor/Doctor';
+import DoctorProfileInfo from './Doctor/DoctorProfileInfo';
+import FeedPage from './pages/FeedPage';
+import DoctorAvailabilityPage from './Doctor/DoctorAvailabilityPage';
+import CreatePassword from './pages/CreatePassword';
 
-// --- Authentication Logic ---
+// Authentication Logic
 const checkUserAuth = () => {
   const token = localStorage.getItem('token');
-  const userType = localStorage.getItem('userType'); // STORE THE ROLE
-  console.log("Auth Check:", { token, userType }); // Debug log
-  return { isLoggedIn: !!token, userType: token ? userType : null }; // Only set type if logged in
+  const userType = localStorage.getItem('userType');
+  return { isLoggedIn: !!token, userType: token ? userType : null };
 };
 
 const logoutUser = () => {
   localStorage.removeItem('token');
-  localStorage.removeItem('userType'); // REMOVE ROLE ON LOGOUT
+  localStorage.removeItem('userType');
 };
 
-// --- Helper Component for Protected Routes ---
-const ProtectedRoute = ({ allowedRoles, children }) => {
-  const { isLoggedIn, userType } = checkUserAuth();
+const App = () => {
+  // Protected Route Component
+  const ProtectedRoute = ({ allowedRoles, children }) => {
+    const location = useLocation();
+    const { isLoggedIn, userType } = checkUserAuth();
+
+    if (!isLoggedIn) {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (allowedRoles && !allowedRoles.includes(userType)) {
+      if (userType === 'admin') return <Navigate to="/admin-dashboard" replace />;
+      if (userType === 'doctor') return <Navigate to="/doctor/dashboard" replace />;
+      return <Navigate to="/" replace />;
+    }
+
+    return children;
+  };
   const location = useLocation();
+  const [auth, setAuth] = React.useState(checkUserAuth());
 
-  if (!isLoggedIn) {
-    // Redirect to login, saving the intended location
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (allowedRoles && !allowedRoles.includes(userType)) {
-     // Redirect to an unauthorized page or home page
-     console.warn(`Unauthorized access attempt to ${location.pathname} by role: ${userType}`);
-     // Redirect based on role?
-     if (userType === 'admin') return <Navigate to="/admin-dashboard" replace />;
-     if (userType === 'doctor') return <Navigate to="/doctor/dashboard" replace />;
-     // Default redirect for unauthorized patients or unexpected roles
-     return <Navigate to="/" replace />; 
-  }
-
-  return children; // Render the component if authorized
-};
-
-
-function AppContent() {
-  const location = useLocation();
-  // Initialize state once from localStorage
-  const [auth, setAuth] = useState(checkUserAuth); 
-
-  // Function to update auth state, typically called from Login/Logout
   const updateAuth = () => {
     setAuth(checkUserAuth());
   };
 
   const handleLogout = () => {
     logoutUser();
-    updateAuth(); // Update state
-    // Navigation handled by component or redirect might be needed
+    updateAuth();
   };
 
   const isAdmin = auth.isLoggedIn && auth.userType === 'admin';
-  const isDoctor = auth.isLoggedIn && auth.userType === 'doctor';
-  const isPatient = auth.isLoggedIn && auth.userType === 'patient';
-
   const hideNavPaths = ['/login', '/register'];
   const shouldHideNav = hideNavPaths.includes(location.pathname);
 
-  console.log("AppContent Render - Auth:", auth); // Debug Log
-
   return (
     <div className="flex flex-col min-h-screen">
-      {/* --- Navigation Rendering --- */}
       {!shouldHideNav && isAdmin && <AdminSidebar onLogout={handleLogout} />}
-      {!shouldHideNav && !isAdmin && ( // Show MainNavbar for Doctors, Patients, and logged-out users
-           <MainNavbar
-              isLoggedIn={auth.isLoggedIn}
-              userType={auth.userType}
-              onLogout={handleLogout}
-           />
+      {!shouldHideNav && !isAdmin && (
+        <MainNavbar
+          isLoggedIn={auth.isLoggedIn}
+          userType={auth.userType}
+          onLogout={handleLogout}
+        />
       )}
-      {shouldHideNav && ( /* Optional simple header for auth pages */
-         <div className="p-4 border-b h-16 flex items-center">
-            <span className="text-xl font-bold text-primary">MediNearBy</span>
-         </div>
+      {shouldHideNav && (
+        <div className="p-4 border-b h-16 flex items-center">
+          <span className="text-xl font-bold text-primary">MediNearBy</span>
+        </div>
       )}
 
-      {/* --- Main Content Area --- */}
-      {/* Adjust padding based on which nav is showing */}
       <main className={`flex-grow ${isAdmin && !shouldHideNav ? 'pl-64' : ''} ${!isAdmin && !shouldHideNav ? 'pt-16' : ''}`}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login onLoginSuccess={updateAuth} />} /> {/* Pass updateAuth */}
+          <Route path="/login" element={<Login onLoginSuccess={updateAuth} />} />
           <Route path="/register" element={<Register />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-         
+          <Route path="/doctors" element={<Doctor />} />
+          <Route path="/doctors/:doctorId" element={<DoctorProfileInfo />} />
+          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/create-password" element={<CreatePassword />} />
 
-          {/* === Protected Routes === */}
-
-          {/* Routes accessible by ANY logged-in user */}
+          {/* Protected Routes */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-           {/* Patient Routes */}
-           <Route path="/my-appointments" element={
-               <ProtectedRoute allowedRoles={['patient']}><MyAppoinment /></ProtectedRoute>
-           } />
-            <Route path="/patient/dashboard" element={ // Example patient dashboard
-               <ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>
-           } />
+          {/* Patient Routes */}
+          <Route path="/my-appointments" element={
+            <ProtectedRoute allowedRoles={['patient']}><MyAppoinment /></ProtectedRoute>
+          } />
+          <Route path="/patient/dashboard" element={
+            <ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>
+          } />
 
           {/* Doctor Routes */}
           <Route path="/doctor/dashboard" element={
-              <ProtectedRoute allowedRoles={['doctor']}><DoctorDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['doctor']}><DoctorDashboard /></ProtectedRoute>
           } />
-           <Route path="/doctor/appointments" element={ // Example
-              <ProtectedRoute allowedRoles={['doctor']}><DoctorAppointments /></ProtectedRoute>
+          <Route path="/doctor/appointments" element={
+            <ProtectedRoute allowedRoles={['doctor']}><DoctorAppointments /></ProtectedRoute>
           } />
-          {/* Doctors might also access /profile */}
-          { isDoctor && <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} /> }
-
+          <Route path="/doctor/schedule" element={
+            <ProtectedRoute allowedRoles={['doctor']}><DoctorAvailabilityPage /></ProtectedRoute>
+          } />
 
           {/* Admin Routes */}
           <Route path="/admin-dashboard" element={
-             <ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>
           } />
           <Route path="/admin/review" element={
-             <ProtectedRoute allowedRoles={['admin']}><AdminReview /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}><AdminReview /></ProtectedRoute>
           } />
           <Route path="/admin/doctor-requests" element={
-             <ProtectedRoute allowedRoles={['admin']}><DoctorRequests /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}><DoctorRequests /></ProtectedRoute>
           } />
-           <Route path="/admin/doctor-list" element={
-             <ProtectedRoute allowedRoles={['admin']}><DoctorList /></ProtectedRoute>
+          <Route path="/admin/doctor-list" element={
+            <ProtectedRoute allowedRoles={['admin']}><DoctorList /></ProtectedRoute>
           } />
-           {/* Admins might also access /profile */}
-           { isAdmin && <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} /> }
 
-          {/* Catch-all or Not Found Route */}
-          <Route path="*" element={<Navigate to="/" replace />} /> 
-          {/* Or a dedicated <NotFound /> page */}
-
+          {/* Catch-all Route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
   );
-}
-
-function App() {
-  return (
-      <AppContent />
-    
-  );
-}
+};
 
 export default App;

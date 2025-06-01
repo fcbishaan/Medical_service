@@ -10,86 +10,113 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // For errors
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Wrap in Card
-import { AlertCircle, CheckCircle, XCircle, Info } from "lucide-react"; // Icons
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, CheckCircle, XCircle, Info, ExternalLink } from "lucide-react";
 
+// Helper function to format date
 const formatDate = (dateString) => {
-  // ... (keep your formatting function)
   if (!dateString) return 'N/A';
   try {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
+    // Assuming backend saves standard date format
+    return new Date(dateString).toLocaleDateString('en-CA'); // Example: YYYY-MM-DD
   } catch (error) {
     return 'Invalid Date';
   }
 };
 
+// Helper function to get token (adjust if stored differently)
+const getAuthToken = () => localStorage.getItem('token');
+
 const DoctorRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null); // Track loading state per action (optional)
+  const [actionLoading, setActionLoading] = useState(null); // Track loading state per action
 
+  // Fetch pending requests on component mount
   useEffect(() => {
     fetchDoctorRequests();
   }, []);
 
+  // --- Fetch Pending Doctor Requests ---
   const fetchDoctorRequests = async () => {
     setLoading(true);
     setError(null);
-    try {
-      // --- Replace with actual API call ---
-      // const response = await fetch('/api/admin/doctor-requests?status=pending');
-      // if (!response.ok) throw new Error('Failed to fetch doctor requests');
-      // const data = await response.json();
-      // setRequests(data.requests || []);
+    const token = getAuthToken(); // Get the admin token
 
-      // --- Mock Data ---
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setRequests([
-        { _id: 'req1', doctorName: 'Dr. Sarah Connor', specialization: 'Neurology', submittedDate: '2023-10-26T10:00:00Z', status: 'pending', email: 'sarah.c@example.com' }, // Added email
-        { _id: 'req2', doctorName: 'Dr. Kyle Reese', specialization: 'Cardiology', submittedDate: '2023-10-25T15:30:00Z', status: 'pending', email: 'kyle.r@example.com' },
-        { _id: 'req3', doctorName: 'Dr. John Carter', specialization: 'Orthopedics', submittedDate: '2023-10-27T09:15:00Z', status: 'pending', email: 'john.c@example.com' },
-      ]);
-      // --- End Mock Data ---
+    if (!token) {
+        setError("Authentication required. Please log in.");
+        setLoading(false);
+        return;
+    }
+
+    try {
+      // Call the backend endpoint defined in adminRoute.js
+      const response = await fetch('/api/admin/getPendingRequests', { 
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}` // Send auth token
+        }
+      }); 
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to fetch pending requests.');
+      }
+
+      setRequests(data.data || []); // Expecting data structure { success: true, data: [...] }
 
     } catch (err) {
       console.error("Error fetching doctor requests:", err);
-      setError(err.message || "Failed to load requests.");
+      setError(err.message);
       setRequests([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRequestAction = async (requestId, action) => {
+  // --- Handle Approve/Reject Action ---
+  const handleReviewAction = async (requestId, action) => {
     setActionLoading(requestId); // Indicate loading for this specific row
+    setError(null); // Clear previous errors
+    const token = getAuthToken();
+
+    if (!token) {
+        setError("Authentication required. Please log in.");
+        setActionLoading(null);
+        return;
+    }
+
     try {
-      console.log(`${action} request:`, requestId);
-      // --- Replace with actual API call ---
-      // const response = await fetch(`/api/admin/doctor-requests/${requestId}/${action}`, { method: 'PATCH' });
-      // if (!response.ok) {
-      //   const errorData = await response.json().catch(() => ({})); // Try to get error details
-      //   throw new Error(`Failed to ${action} request. ${errorData.message || ''}`);
-      // }
+      // Call the backend endpoint defined in adminRoute.js
+      const response = await fetch('/api/admin/reviewDoctorRequest', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Send auth token
+        },
+        // Send doctorId (which is requestId here) and action
+        body: JSON.stringify({ doctorId: requestId, action: action }), 
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Failed to ${action} request.`);
+      }
+
+      console.log(`Request ${requestId} ${action} successful.`);
       
-      // --- Mock Delay ---
-       await new Promise(resolve => setTimeout(resolve, 700));
-      // --- End Mock Delay ---
-
-      // Refetch data or update state locally
-      // Option 1: Refetch
-      // fetchDoctorRequests(); 
-      // Option 2: Update local state (remove the processed request)
-       setRequests(prev => prev.filter(req => req._id !== requestId));
-
+      // --- Update UI ---
+      // Remove the processed request from the list
+      setRequests(prevRequests => prevRequests.filter(req => req._id !== requestId));
 
     } catch (err) {
       console.error(`Error ${action} request ${requestId}:`, err);
-      // Display a more specific error message to the user (e.g., using a Toast component)
-      alert(`Error performing action: ${err.message}`); 
+      // Display error to the user
+      setError(`Failed to ${action} request: ${err.message}`); 
     } finally {
       setActionLoading(null); // Clear loading state for the row
     }
@@ -100,12 +127,19 @@ const DoctorRequests = () => {
     <div className="p-8">
       <h2 className="text-3xl font-bold tracking-tight mb-6">Doctor Verification Requests</h2>
 
+      {/* Display general errors */}
+      {error && !actionLoading && ( // Don't show general error if an action error occurred
+         <Alert variant="destructive" className="mb-4">
+           <AlertCircle className="h-4 w-4" />
+           <AlertTitle>Error</AlertTitle>
+           <AlertDescription>{error}</AlertDescription>
+         </Alert>
+      )}
+
       {/* Loading State */}
       {loading && (
         <Card>
-          <CardHeader>
-             <Skeleton className="h-6 w-1/2" /> {/* Skeleton for title */}
-          </CardHeader>
+          <CardHeader> <Skeleton className="h-6 w-1/2" /> </CardHeader>
           <CardContent className="space-y-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
@@ -114,17 +148,8 @@ const DoctorRequests = () => {
         </Card>
       )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Requests</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
       {/* No Data State */}
-      {!loading && !error && requests.length === 0 && (
+      {!loading && requests.length === 0 && !error && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>No Pending Requests</AlertTitle>
@@ -133,7 +158,7 @@ const DoctorRequests = () => {
       )}
 
       {/* Table Display */}
-      {!loading && !error && requests.length > 0 && (
+      {!loading && requests.length > 0 && (
         <Card>
           <CardHeader>
              <CardTitle>Pending Applications</CardTitle>
@@ -143,47 +168,55 @@ const DoctorRequests = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Doctor Name</TableHead>
-                  <TableHead>Email</TableHead> {/* Added Email */}
-                  <TableHead>Specialization</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Submitted On</TableHead>
+                  <TableHead>License</TableHead> {/* Added License Link */}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {requests.map((request) => (
-                  <TableRow key={request._id} className={actionLoading === request._id ? 'opacity-50' : ''}>
-                    <TableCell className="font-medium">{request.doctorName}</TableCell>
-                    <TableCell>{request.email}</TableCell> {/* Display Email */}
-                    <TableCell>{request.specialization}</TableCell>
-                    <TableCell>{formatDate(request.submittedDate)}</TableCell>
+                  // Dim row if its action is loading
+                  <TableRow key={request._id} className={actionLoading === request._id ? 'opacity-50 pointer-events-none' : ''}> 
+                    <TableCell className="font-medium">{`${request.Fname || ''} ${request.Lname || ''}`.trim()}</TableCell>
+                    <TableCell>{request.email}</TableCell>
+                    {/* Assuming backend sends createdAt or similar */}
+                    <TableCell>{formatDate(request.createdAt)}</TableCell> 
+                     <TableCell>
+                        {/* Link to view the uploaded license */}
+                        <a href={request.license} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center text-sm">
+                          View <ExternalLink className="ml-1 h-3 w-3"/>
+                        </a>
+                     </TableCell>
                     <TableCell>
+                      {/* Badge should always be 'pending' here */}
                       <Badge variant={request.status === 'pending' ? 'warning' : 'secondary'}>
                           {request.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
+                      {/* Approve Button */}
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
-                        onClick={() => handleRequestAction(request._id, 'approve')}
-                        disabled={actionLoading === request._id || request.status !== 'pending'}
+                        onClick={() => handleReviewAction(request._id, 'approve')}
+                        disabled={actionLoading === request._id} // Disable only if this row is loading
                       >
-                        <CheckCircle className="mr-1 h-4 w-4" /> Approve
+                        {actionLoading === request._id ? 'Processing...' : <><CheckCircle className="mr-1 h-4 w-4" /> Approve</>}
                       </Button>
+                      {/* Reject Button */}
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => handleRequestAction(request._id, 'reject')}
-                        disabled={actionLoading === request._id || request.status !== 'pending'}
+                        onClick={() => handleReviewAction(request._id, 'reject')}
+                        disabled={actionLoading === request._id} // Disable only if this row is loading
                       >
-                         <XCircle className="mr-1 h-4 w-4" /> Reject
+                         {actionLoading === request._id ? 'Processing...' : <><XCircle className="mr-1 h-4 w-4" /> Reject </>}
                       </Button>
-                      {/* Optional: View Details Button */}
-                      {/* <Button variant="ghost" size="sm" disabled={actionLoading === request._id}>Details</Button> */}
                     </TableCell>
                   </TableRow>
                 ))}
