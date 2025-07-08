@@ -17,6 +17,8 @@ import reviewRoutes from './routes/reviewRoutes.js'
 //app config
 const app = express()
 const port = process.env.PORT || 4000
+console.log("Server Started", port)
+
 connectDB()
 connectCloudinary()
 //middlewares
